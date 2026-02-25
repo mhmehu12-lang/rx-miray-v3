@@ -2,7 +2,7 @@ const axios = require("axios");
 const fs = require('fs');
 
 const baseApiUrl = async () => {
-  const base = await axios.get("https://raw.githubusercontent.com/rummmmna21/rx-api/main/baseApiUrl.json");
+  const base = await axios.get("https://raw.githubusercontent.com/abdullahrx07/X-api/main/MaRiA/baseApiUrl.json");
   return base.data.api;
 };
 
