@@ -3,6 +3,7 @@ const path = require("path");
 
 module.exports.config = {
   name: "help",
+  premium: false,
   version: "4.4.0",
   hasPermssion: 0,
   credits: "rX",
@@ -43,7 +44,7 @@ module.exports.run = async function ({ api, event, args }) {
       if (!cmd)
         return api.sendMessage(`❌ Command "${find}" not found.`, event.threadID, event.messageID);
 
-      let msg = `╭──❏ 𝗖𝗢𝗠𝗠𝗔𝗡𝗗 𝗗𝗘𝗧𝗔𝗜𝗟 ❏──╮\n`;
+      let msg = `╭──❏ 𝐂𝐌𝐃 𝐈𝐍𝐅𝐎 ❏──╮\n`;
       msg += `│ ✧ Name: ${cmd.name}\n`;
       if (cmd.aliases.length > 0) msg += `│ ✧ Aliases: ${cmd.aliases.join(", ")}\n`;  // ✅ show aliases
       msg += `│ ✧ Category: ${cmd.category}\n`;
@@ -99,7 +100,7 @@ module.exports.run = async function ({ api, event, args }) {
     let attachment = null;
     const cache = path.join(__dirname, "noprefix");
     if (fs.existsSync(cache)) {
-      const names = ["abdullah1", "abdullah2", "abdullah3"];
+      const names = ["mari1"];
       const exts = [".gif", ".mp4", ".webp", ".png", ".jpg"];
       let found = [];
 
