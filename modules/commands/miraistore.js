@@ -10,7 +10,7 @@ module.exports.config = {
  name: "miraistore",
  aliases: ["ms", "shop"],
  premium: true, 
- version: "2.9.0",
+ version: "2.9.1",
  hasPermission: 2,
  credits: "rX",
  description: "Mirai Command Store (Search, Like, Upload, Install, Delete, Trending, List)",
@@ -224,6 +224,41 @@ module.exports.run = async function({ api, event, args }) {
       return api.sendMessage("❌ Upload failed. Try again later.", threadID);
     }
   }
+  // ================= DELETE =================
+  if (sub === "delete") {
+    if (!ADMINS.includes(senderID))
+      return api.sendMessage("❌ You are not allowed to delete.", threadID);
+
+    const id = args[1];
+    const secret = args[2];
+    if (!id || !secret)
+      return api.sendMessage("❌ Usage: !miraistore delete <id> <secret>", threadID);
+
+    try {
+      const res = await axios.post(`${API_BASE}/miraistore/delete/${id}`, { secret });
+      if (res.data?.error)
+        return api.sendMessage(`❌ ${res.data.error}`, threadID);
+
+      return api.sendMessage(`🗑️ Deleted!\n🆔 ID: ${id}`, threadID);
+    } catch {
+      return api.sendMessage("❌ Delete API error.", threadID);
+    }
+  }
+
+  // ================= LIKE =================
+  if (sub === "like") {
+    const id = args[1];
+    if (!id) return api.sendMessage("❌ Usage: !miraistore like <id>", threadID);
+
+    try {
+      const res = await axios.post(`${API_BASE}/miraistore/like/${id}`, { userID: senderID });
+      if (res.data?.message) return api.sendMessage("⚠️ Already liked.", threadID);
+
+      return api.sendMessage(`❤️ Liked!\nTotal Likes: ${res.data.likes}`, threadID);
+    } catch {
+      return api.sendMessage("❌ Like API error.", threadID);
+    }
+  }
 
  // ================= INSTALL =================
  if (sub === "install") {
@@ -250,18 +285,34 @@ module.exports.run = async function({ api, event, args }) {
  } catch { return api.sendMessage("❌ Trending API error.", threadID); }
  }
 
- // ================= LIST =================
- if (sub === "list" || sub === "ls") {
- let page = Number(args[1]) || 1;
- try {
- const res = await axios.get(`${API_BASE}/miraistore/list?limit=20&offset=${(page - 1) * 20}`);
- const data = res.data;
- if (!data.commands.length) return api.sendMessage("❌ No commands found.", threadID);
- let msg = `📂 Miraistore List — Page ${page}\n\n`;
- data.commands.forEach(cmd => msg += `╭─‣ ${cmd.name}\n├‣ ID : ${cmd.id}\n╰────────────◊\n\n`);
- return api.sendMessage(msg.trim(), threadID);
- } catch (err) { return api.sendMessage("❌ List API error.", threadID); }
- }
+   // ================= LIST =================
+  if (sub === "list" || sub === "ls") {
+    let page = Number(args[1]) || 1;
+    if (page < 1) page = 1;
+    const limit = 20;
+    const offset = (page - 1) * limit;
+
+    try {
+      const res = await axios.get(`${API_BASE}/miraistore/list?limit=${limit}&offset=${offset}`);
+      const data = res.data;
+      if (!data || !Array.isArray(data.commands) || data.commands.length === 0)
+        return api.sendMessage("❌ No commands found for this page.", threadID);
+
+      let msg = `📂 Miraistore List — Page ${page} / ${Math.ceil(data.total / limit)}\n\n`;
+      data.commands.forEach(cmd => {
+        msg += `╭─‣ ${cmd.name}
+├‣ Category : ${cmd.category}
+├‣ ID : ${cmd.id}
+├‣ Upload : ${new Date(cmd.uploadDate || Date.now()).toDateString()}
+╰────────────◊\n\n`;
+      });
+
+      return api.sendMessage(msg.trim(), threadID);
+    } catch (err) {
+      console.error(err);
+      return api.sendMessage("❌ List API error.", threadID);
+    }
+  }
 
     // ================= SEARCH =================
   const query = args.join(" ");
