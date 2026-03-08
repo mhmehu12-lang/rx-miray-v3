@@ -2,37 +2,32 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "bot",
-  version: "3.0.0",
+  version: "3.1.0",
   hasPermssion: 0,
   credits: "rX Abdullah",
-  description: "Maria custom frame only first time, then normal AI chat",
+  description: "Maria AI chat with session memory per user & plain intro",
   commandCategory: "noprefix",
-  usages: "ai",
+  usages: "bot",
   cooldowns: 3
 };
 
-// Invisible marker
+// Invisible marker to identify Maria replies
 const marker = "\u700B";
 function withMarker(text) {
   return text + marker;
 }
 
-// Sessions
+// Sessions memory per user UID
 const sessions = {};
 
-// Maria API endpoint
-const MARIA_API_URL = "https://maria-languages-model.onrender.com/api/chat";
+// AI API endpoint (Vercel hosted)
+const AI_API = "https://mari-llm.vercel.app/api/ai";
 
-// Custom first message replies
-const customReplies = [
-  "বেশি Bot Bot করলে leave নিবো কিন্তু😒",
-  "🥛-🍍👈 -লে খাহ্..!😒",
-  "শুনবো না😼 তুমি আমাকে প্রেম করাই দাও নাই🥺",
-  "আমি আবাল দের সাথে কথা বলি না😒",
-  "এতো ডেকো না, প্রেমে পরে যাবো 🙈",
-  "বার বার ডাকলে মাথা গরম হয়ে যায়😑",
-  "𝐓𝐨𝐫 𝐧𝐚𝐧𝐢𝐫 𝐮𝐢𝐝 𝐦𝐞 𝐝𝐞 𝐤𝐡𝐚𝐢 𝐝𝐢 𝐚𝐦𝐢 🦆",
-  "এতো ডাকছিস কেন? গালি শুনবি নাকি? 🤬"
+// Plain unique intro messages
+const introMessages = [
+  "Hello there! I’m Maria LLM, your friendly AI assistant. How can I assist you today? 🙂",
+  "Hey! Maria here 🤖. Ready to chat and help you out. What’s on your mind?",
+  "Hi! I’m Maria LLM – smart, helpful, and always curious. How can I make your day easier?"
 ];
 
 module.exports.handleEvent = async function({ api, event, Users }) {
@@ -41,34 +36,26 @@ module.exports.handleEvent = async function({ api, event, Users }) {
 
   const name = await Users.getNameUser(senderID);
 
-  // ---------------------------------------------------------------------
-  // STEP 1: User types "ai" → First stylish message only
-  // ---------------------------------------------------------------------
+  // STEP 1: First "bot" message → plain intro
   if (body.trim().toLowerCase() === "bot") {
+    // Initialize session for this user UID
     sessions[senderID] = { history: "", allowAI: true };
 
-    const rand = customReplies[Math.floor(Math.random() * customReplies.length)];
+    // Pick random intro
+    const intro = introMessages[Math.floor(Math.random() * introMessages.length)];
 
-    const firstMessage =
-`╭──────•◈•──────╮
-  ʜᴇʏ xᴀɴ ɪᴀᴍ ᴍᴀʀɪᴀ ʙᴀʙᴢ 
-
- ✰ Hi ${name}, 
- 💌 ${rand}
-╰──────•◈•──────╯`;
+    const firstMessage = `${intro}\nHi ${name}!`;
 
     try {
       await api.sendTypingIndicatorV2(true, threadID);
-      await new Promise(r => setTimeout(r, 2500));
+      await new Promise(r => setTimeout(r, 1500));
       await api.sendTypingIndicatorV2(false, threadID);
     } catch {}
 
     return api.sendMessage(withMarker(firstMessage), threadID, messageID);
   }
 
-  // ---------------------------------------------------------------------
-  // STEP 2: User replies to Maria → Normal AI message
-  // ---------------------------------------------------------------------
+  // STEP 2: Normal AI reply when user replies to Maria
   if (
     messageReply &&
     messageReply.senderID === api.getCurrentUserID() &&
@@ -82,15 +69,9 @@ module.exports.handleEvent = async function({ api, event, Users }) {
     api.setMessageReaction("⏳", messageID, () => {}, true);
 
     // If user asks about creator
-    const creatorKeywords = [
-      "tera creator", "developer kaun"
-    ];
-
+    const creatorKeywords = ["tera creator", "developer kaun"];
     if (creatorKeywords.some(k => userMsg.toLowerCase().includes(k))) {
-
-      // SUCCESS ✔ react
       api.setMessageReaction("✅", messageID, () => {}, true);
-
       return api.sendMessage(
         withMarker("👑 My creator rX Abdullah unhone muje banaya hai"),
         threadID,
@@ -103,38 +84,30 @@ module.exports.handleEvent = async function({ api, event, Users }) {
 
     try {
       await api.sendTypingIndicatorV2(true, threadID);
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 1500));
       await api.sendTypingIndicatorV2(false, threadID);
     } catch {}
 
     try {
-      // Send to Maria API
-      const resp = await axios.post(MARIA_API_URL, {
-        user_id: senderID,
-        query: sessions[senderID].history,
-        meta: { need_realtime: true }
-      });
+      // Call AI API (GET request)
+      const resp = await axios.get(`${AI_API}?msg=${encodeURIComponent(userMsg)}`);
 
-      let reply = resp.data?.answer?.text || "🙂 I didn't understand.";
+      let reply = resp.data.reply || "🙂 I didn't understand.";
 
-      // Replace OpenAI → rX Abdullah
+      // Replace OpenAI mentions → rX Abdullah
       reply = reply.replace(/openai/gi, "rX Abdullah");
 
+      // Save reply to session memory
       sessions[senderID].history += reply + "\n";
 
-      // SUCCESS ✔ react
       api.setMessageReaction("✅", messageID, () => {}, true);
 
-      // NORMAL plain answer
       return api.sendMessage(withMarker(reply), threadID, messageID);
 
     } catch (err) {
-
-      // ERROR ❌ react
       api.setMessageReaction("❌", messageID, () => {}, true);
-
       console.log(err);
-      return api.sendMessage("❌ Maria API error.", threadID, messageID);
+      return api.sendMessage("❌ AI API error.", threadID, messageID);
     }
   }
 };
